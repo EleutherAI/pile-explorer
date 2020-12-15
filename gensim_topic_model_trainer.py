@@ -7,11 +7,37 @@ from collections import defaultdict
 from gensim.corpora.dictionary import Dictionary
 from gensim.utils import simple_tokenize
 from gensim.models import LdaModel
+from slugify import slugify
 
 def chunks(iterable, size=10):
     iterator = iter(iterable)
     for first in iterator:
         yield itertools.chain([first], itertools.islice(iterator, size - 1))
+
+component_names = {
+    'StackExchange',
+    'PubMed Central',
+    'HackerNews',
+    'OpenWebText2',
+    'Enron Emails',
+    'Ubuntu IRC',
+    'BookCorpus',
+    'USPTO',
+    'Gutenberg (PG-19)',
+    'Github',
+    'CommonCrawl',
+    'PubMed Abstracts',
+    'FreeLaw',
+    'Wikipedia (en)',
+    'ArXiv',
+    'DM Mathematics',
+    'PhilPapers',
+    'EuroParl',
+    'Bibliotik',
+    'OpenSubtitles',
+    'YoutubeSubtitles',
+    'NIH ExPorter'
+}
 
 parser = argparse.ArgumentParser(description='Train topic models on a component.')
 
@@ -21,7 +47,7 @@ parser.add_argument('--threshold', type=int, default=2**10, help='Number of docu
 parser.add_argument('--input_path', required=True, help='Path to Pile split to use for dictionary (validation, ideally)')
 parser.add_argument('--dictionary_file', required=True, help='File name to load the dictionary from')
 parser.add_argument('--num_topics', type=int, default=32, help='Number of topics to use for LDA')
-parser.add_argument('--component', required=True, help='Component tag for the pile component to run the model on')
+parser.add_argument('--component', required=True, choices=component_names, help='Component tag for the pile component to run the model on')
 
 args = parser.parse_args()
 
@@ -65,4 +91,4 @@ for chunk in doc_chunks:
 model.update(component_docs)
 component_docs = []
 
-model.save(COMPONENT + '.model.topic')
+model.save(slugify(COMPONENT) + '.model.topic')
