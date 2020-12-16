@@ -98,7 +98,7 @@ with Pool(TOK_PROCESSES) as p:
             docs[component].append(bow)
 
             if len(docs[component]) >= THRESHOLD:
-                if component in models.keys():
+                if component in models:
                     print(f'Training model for {component} component')
                     models[component].update(docs[component])
                 else:
@@ -119,6 +119,21 @@ with Pool(TOK_PROCESSES) as p:
                 docs[component] = []
 
 for component in component_list:
-    models[component].update(docs[component])
+    if component in models:
+        models[component].update(docs[component])
+    else:
+        print(f'Initializing model for {component} component')
+        if LDA_PROCESSES > 1:
+            models[component] = LdaModel(docs[component],
+                                         id2word=dictionary,
+                                         num_topics=N_TOPICS,
+                                         iterations=50)
+        else:
+            models[component] = LdaMulticore(docs[component],
+                                             id2word=dictionary,
+                                             num_topics=N_TOPICS,
+                                             iterations=50,
+                                             workers=LDA_PROCESSES-1)
+
     models[component].save(slugify(component) + '.model.topic')
     docs[component] = None
