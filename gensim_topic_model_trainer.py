@@ -3,6 +3,7 @@ import lm_dataformat as lmd
 import gensim
 import itertools
 
+from multiprocessing import Pool
 from collections import defaultdict
 from gensim.corpora.dictionary import Dictionary
 from gensim.utils import simple_tokenize
@@ -50,7 +51,8 @@ parser.add_argument('--component', required=True, choices=component_options, hel
 parser.add_argument('--chunk_size', type=int, default=2**12,
                     help='Number of documents in a chunk')
 parser.add_argument('--threshold', type=int, default=2**10, help='Number of documents to run another online batch')
-parser.add_argument('--cores', type=int, default=1, help='Number of CPU cores')
+parser.add_argument('--tokenizer_processes', type=int, default=1, help='Number of processes for input tokenization')
+parser.add_argument('--lda_processes', type=int, default=1, help='Number of processes for LDA training')
 
 args = parser.parse_args()
 
@@ -60,7 +62,8 @@ COMPONENT = args.component
 N_TOPICS = args.num_topics
 CHUNK_SIZE = args.chunk_size
 THRESHOLD = args.threshold
-CORES = args.cores
+TOK_PROCESSES = args.tokenizer_processes
+LDA_PROCESSES = args.lda_processes
 
 if COMPONENT == 'all':
     components = component_list
@@ -70,50 +73,50 @@ else:
 dictionary = Dictionary.load(dictionary_file)
 
 rdr = lmd.Reader(input_path)
-stream = rdr.stream_data(get_meta=True)
-gnr = ((dictionary.doc2bow(simple_tokenize(text)), meta['pile_set_name']) for (text, meta) in stream)
-doc_chunks = chunks(gnr, size=CHUNK_SIZE)
+stream = rdr.stream_data(get_meta=True, threaded=True)
+
+def baggify(item):
+    text, meta = item
+    component = meta['pile_set_name']
+    if component in components:
+        bow_or_none = dictionary.doc2bow(simple_tokenize(text))
+    else:
+        bow_or_none = None
+    return (bow_or_none, component)
 
 docs = defaultdict(list)
 models = defaultdict()
 
-progress = 0
 count = 0
 
-for chunk in doc_chunks:
-    print(f'{count:,} documents trained on out of {progress:,} documents read')
+with Pool(TOK_PROCESSES) as p:
+    doc_iter = p.imap_unordered(baggify, stream, chunksize=CHUNK_SIZE)
+    for (i, (bow, component)) in enumerate(doc_iter):
+        print(f'{count:,} documents trained on out of {i:,} documents read')
 
-    if len(components) == 22:
-        [docs[component].append(bow) for (bow, component) in chunk]
-    else:
-        [docs[component].append(bow) for (bow, component) in chunk if component in components]   
+        if bow:
+            docs[component].append(bow)
 
-    for component in components:
-        if len(docs[component]) > THRESHOLD:
-            if component in models.keys():
-                print(f'Training model for {component} component')
-                models[component].update(docs[component])
-            else:
-                print(f'Initializing model for {component} component')
-                if CORES > 1:
-                    models[component] = LdaModel(docs[component],
-                                         id2word=dictionary,
-                                         num_topics=N_TOPICS,
-                                         iterations=100,
-                                         chunksize=CHUNK_SIZE / 2)
+            if len(docs[component]) >= THRESHOLD:
+                if component in models.keys():
+                    print(f'Training model for {component} component')
+                    models[component].update(docs[component])
                 else:
-                    models[component] = LdaMulticore(docs[component],
+                    print(f'Initializing model for {component} component')
+                    if LDA_PROCESSES > 1:
+                        models[component] = LdaModel(docs[component],
                                                      id2word=dictionary,
                                                      num_topics=N_TOPICS,
-                                                     iterations=100,
-                                                     chunksize=CHUNK_SIZE / 2,
-                                                     workers=CORES-1)
+                                                     iterations=50)
+                    else:
+                        models[component] = LdaMulticore(docs[component],
+                                                         id2word=dictionary,
+                                                         num_topics=N_TOPICS,
+                                                         iterations=50,
+                                                         workers=LDA_PROCESSES-1)
 
-            count += len(docs[component])
-            docs[component] = []
-    break
-
-    progress = progress + CHUNK_SIZE
+                count += len(docs[component])
+                docs[component] = []
 
 for component in component_list:
     models[component].update(docs[component])

@@ -1,1 +1,1 @@
-python gensim_topic_model_trainer.py --input_path train --dictionary_file gensim.dict --component "all" --cores 23 --chunk_size 8192 --threshold 8192
+python gensim_topic_model_trainer.py  --input_path train  --dictionary_file gensim.dict --component "all" --tokenizer_processes 4 --lda_processes 4 --chunk_size 128 --threshold 16384
