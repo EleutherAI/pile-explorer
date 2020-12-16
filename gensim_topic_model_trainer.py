@@ -81,8 +81,6 @@ progress = 0
 count = 0
 
 for chunk in doc_chunks:
-    if count >= 100_000:
-        break
     print(f'{count:,} documents trained on out of {progress:,} documents read')
 
     if len(components) == 22:
@@ -113,10 +111,11 @@ for chunk in doc_chunks:
 
             count += len(docs[component])
             docs[component] = []
+    break
 
     progress = progress + CHUNK_SIZE
 
 for component in component_list:
-    model[component].update(docs[component])
-    model.save(slugify(component) + '.model.topic')
+    models[component].update(docs[component])
+    models[component].save(slugify(component) + '.model.topic')
     docs[component] = None
