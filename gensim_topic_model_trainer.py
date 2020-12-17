@@ -118,12 +118,12 @@ with Pool(TOK_PROCESSES) as p:
                 print(f'Processed {count:,} documents so far')
                 docs[component] = []
 
-for component in component_list:
+for component in components:
     if component in models:
         models[component].update(docs[component])
     else:
         print(f'Initializing model for {component} component')
-        if LDA_PROCESSES > 1:
+        if LDA_PROCESSES < 2:
             models[component] = LdaModel(docs[component],
                                          id2word=dictionary,
                                          num_topics=N_TOPICS,
