@@ -102,7 +102,7 @@ with Pool(TOK_PROCESSES) as p:
                     models[component].update(docs[component])
                 else:
                     print(f'Initializing model for {component} component')
-                    if LDA_PROCESSES > 1:
+                    if LDA_PROCESSES < 2:
                         models[component] = LdaModel(docs[component],
                                                      id2word=dictionary,
                                                      num_topics=N_TOPICS,
