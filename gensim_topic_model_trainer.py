@@ -73,7 +73,7 @@ else:
 dictionary = Dictionary.load(dictionary_file)
 
 rdr = lmd.Reader(input_path)
-stream = rdr.stream_data(get_meta=True, threaded=True)
+stream = rdr.stream_data(get_meta=True)
 
 def baggify(item):
     text, meta = item
@@ -92,8 +92,7 @@ count = 0
 with Pool(TOK_PROCESSES) as p:
     doc_iter = p.imap_unordered(baggify, stream, chunksize=CHUNK_SIZE)
     for (i, (bow, component)) in enumerate(doc_iter):
-        print(f'{count:,} documents trained on out of {i:,} documents read')
-
+        print(f'Read {i:,} documents so far')
         if bow:
             docs[component].append(bow)
 
@@ -116,6 +115,7 @@ with Pool(TOK_PROCESSES) as p:
                                                          workers=LDA_PROCESSES-1)
 
                 count += len(docs[component])
+                print(f'Processed {count:,} documents so far')
                 docs[component] = []
 
 for component in component_list:
