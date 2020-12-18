@@ -8,7 +8,6 @@ from collections import defaultdict
 from gensim.corpora.dictionary import Dictionary
 from gensim.utils import simple_tokenize
 from gensim.models import LdaModel, LdaMulticore
-from slugify import slugify
 
 def chunks(iterable, size=10):
     iterator = iter(iterable)
@@ -135,5 +134,5 @@ for component in components:
                                              iterations=50,
                                              workers=LDA_PROCESSES-1)
 
-    models[component].save(slugify(component) + '.model.topic')
+    models[component].save(component + '.model.topic')
     docs[component] = None
