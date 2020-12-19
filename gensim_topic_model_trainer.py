@@ -106,7 +106,6 @@ count = 0
 with Pool(TOK_PROCESSES) as p:
     doc_iter = p.imap_unordered(baggify, stream, chunksize=CHUNK_SIZE)
     for (i, (bow, component)) in enumerate(doc_iter):
-        print(f'Read {i:,} documents so far')
         if bow:
             docs[component].append(bow)
 
