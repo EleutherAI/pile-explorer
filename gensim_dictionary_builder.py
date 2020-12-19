@@ -16,9 +16,7 @@ langdet = fasttext.load_model("lid.176.bin")
 def language(doc):
     details = langdet.predict(doc.replace('\n', ' '), k=1)
 
-    return {
-        'lang': details[0][0].replace('__label__', '')
-    }
+    return details[0][0].replace('__label__', '')
 
 # Utility to chunk a generator
 def chunks(iterable, size=10):
