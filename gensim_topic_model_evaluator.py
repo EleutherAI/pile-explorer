@@ -4,6 +4,8 @@ import gensim
 import itertools
 import json
 import pandas as pd
+import seaborn as sns
+import numpy as np
 
 from math import pow
 from multiprocessing import Pool
@@ -104,3 +106,14 @@ for (training_corpus, eval_corpus) in itertools.product(*(components, components
 with open('topic_model_perplexities.json', 'w') as fp:
     json.dump(perplexities, fp)
     print("Saving topic modeling cross-corpus perplexities...")
+    
+df = pd.DataFrame.from_dict(perplexities,
+                   orient='index')
+log_perplexities = df.apply(np.log)
+
+ax = sns.heatmap(log_perplexities, xticklabels=True, yticklabels=True)
+ax.set_xlabel("Testing Corpus")
+ax.set_ylabel("Training Corpus")
+
+fig = ax.get_figure()
+fig.savefig('topic_model_perplexities.png')
