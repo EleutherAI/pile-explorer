@@ -5,6 +5,7 @@ import itertools
 
 from gensim.corpora.dictionary import Dictionary
 from gensim.utils import simple_preprocess
+from gensim.parsing.preprocessing import remove_stopwords
 
 # Utility to chunk a generator
 def chunks(iterable, size=10):
@@ -36,7 +37,7 @@ doc_chunks = chunks(docs, size=CHUNK_SIZE)
 # Progress in chunks
 for chunk in doc_chunks:
     print("Adding ", CHUNK_SIZE, " docs")
-    dictionary.add_documents([simple_preprocess(doc, min_len=6, max_len=24) for doc in list(chunk)])
+    dictionary.add_documents([simple_preprocess(remove_stopwords(doc), min_len=1, max_len=50) for doc in list(chunk)])
 
 # Keep only 2**16 most frequent tokens
 dictionary.filter_extremes(keep_n=2**16)
