@@ -2,10 +2,23 @@ import argparse
 import lm_dataformat as lmd
 import gensim
 import itertools
+import fasttext
 
 from gensim.corpora.dictionary import Dictionary
 from gensim.utils import simple_preprocess
 from gensim.parsing.preprocessing import remove_stopwords
+from best_download import download_file
+
+download_file('https://dl.fbaipublicfiles.com/fasttext/supervised-models/lid.176.bin', 'lid.176.bin', '7e69ec5451bc261cc7844e49e4792a85d7f09c06789ec800fc4a44aec362764e')
+
+langdet = fasttext.load_model("lid.176.bin")
+
+def language(doc):
+    details = langdet.predict(doc.replace('\n', ' '), k=1)
+
+    return {
+        'lang': details[0][0].replace('__label__', '')
+    }
 
 # Utility to chunk a generator
 def chunks(iterable, size=10):
@@ -37,7 +50,7 @@ doc_chunks = chunks(docs, size=CHUNK_SIZE)
 # Progress in chunks
 for chunk in doc_chunks:
     print("Adding ", CHUNK_SIZE, " docs")
-    dictionary.add_documents([simple_preprocess(remove_stopwords(doc), min_len=1, max_len=50) for doc in list(chunk)])
+    dictionary.add_documents([simple_preprocess(remove_stopwords(doc), min_len=1, max_len=50) for doc in list(chunk) if language(doc) == 'en'])
 
 # Keep only 2**16 most frequent tokens
 dictionary.filter_extremes(keep_n=2**16)

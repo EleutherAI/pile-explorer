@@ -2,6 +2,7 @@ import argparse
 import lm_dataformat as lmd
 import gensim
 import itertools
+import fasttext
 
 from multiprocessing import Pool
 from collections import defaultdict
@@ -9,6 +10,18 @@ from gensim.corpora.dictionary import Dictionary
 from gensim.utils import simple_preprocess
 from gensim.parsing.preprocessing import remove_stopwords
 from gensim.models import LdaModel, LdaMulticore
+from best_download import download_file
+
+download_file('https://dl.fbaipublicfiles.com/fasttext/supervised-models/lid.176.bin', 'lid.176.bin', '7e69ec5451bc261cc7844e49e4792a85d7f09c06789ec800fc4a44aec362764e')
+
+langdet = fasttext.load_model("lid.176.bin")
+
+def language(doc):
+    details = langdet.predict(doc.replace('\n', ' '), k=1)
+
+    return {
+        'lang': details[0][0].replace('__label__', '')
+    }
 
 def chunks(iterable, size=10):
     iterator = iter(iterable)
@@ -79,7 +92,10 @@ def baggify(item):
     text, meta = item
     component = meta['pile_set_name']
     if component in components:
-        bow_or_none = dictionary.doc2bow(simple_preprocess(remove_stopwords(text), min_len=1, max_len=50))
+        if language(text) == 'en':
+            bow_or_none = dictionary.doc2bow(simple_preprocess(remove_stopwords(text), min_len=1, max_len=50))
+        else:
+            bow_or_none = None
     else:
         bow_or_none = None
     return (bow_or_none, component)
