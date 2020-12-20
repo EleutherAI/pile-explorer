@@ -3,18 +3,19 @@ import lm_dataformat as lmd
 import gensim
 import itertools
 import fasttext
+import spacy
 
 from multiprocessing import Pool
 from collections import defaultdict
 from gensim.corpora.dictionary import Dictionary
-from gensim.utils import simple_preprocess
-from gensim.parsing.preprocessing import remove_stopwords
 from gensim.models import LdaModel, LdaMulticore
 from best_download import download_file
+from spacy.lang.en import English
 
 download_file('https://dl.fbaipublicfiles.com/fasttext/supervised-models/lid.176.bin', 'lid.176.bin', '7e69ec5451bc261cc7844e49e4792a85d7f09c06789ec800fc4a44aec362764e')
-
 langdet = fasttext.load_model("lid.176.bin")
+nlp = English()
+tokenizer = nlp.Defaults.create_tokenizer(nlp)
 
 def language(doc):
     details = langdet.predict(doc.replace('\n', ' '), k=1)
@@ -91,7 +92,8 @@ def baggify(item):
     component = meta['pile_set_name']
     if component in components:
         if language(text) == 'en':
-            bow_or_none = dictionary.doc2bow(simple_preprocess(remove_stopwords(text), min_len=1, max_len=50))
+            doc = tokenizer(text)
+            bow_or_none = dictionary.doc2bow([tok.lower_ for tok in doc if not tok.is_stop and tok.is_alpha])
         else:
             bow_or_none = None
     else:
