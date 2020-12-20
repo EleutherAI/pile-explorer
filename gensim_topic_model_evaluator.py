@@ -105,7 +105,7 @@ diffs = defaultdict(defaultdict)
 
 for (train, test) in itertools.product(*(components, components)):
     print(f'Computing topic diff for {train} on {test}...')
-    diffs[train][test] = models[train].diff(models[test]).tolist()
+    diffs[train][test] = models[train].diff(models[test])[0].tolist()
     
 with open('topic_model_diffs.json', 'w') as fp:
     json.dump(diffs, fp)
