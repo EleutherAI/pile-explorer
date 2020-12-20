@@ -58,7 +58,7 @@ parser = argparse.ArgumentParser(description='Train topic models on a component.
 
 parser.add_argument('--input_path', required=True, help='Path to Pile split to use for dictionary (validation, ideally)')
 parser.add_argument('--dictionary_file', required=True, help='File name to load the dictionary from')
-parser.add_argument('--num_topics', type=int, default=32, help='Number of topics to use for LDA')
+parser.add_argument('--num_topics', type=int, default=16, help='Number of topics to use for LDA')
 parser.add_argument('--component', required=True, choices=component_options, help='Component tag for the pile component to run the model on')
 parser.add_argument('--chunk_size', type=int, default=2**12,
                     help='Number of documents in a chunk')
