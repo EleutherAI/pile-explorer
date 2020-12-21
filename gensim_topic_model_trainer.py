@@ -93,7 +93,8 @@ def baggify(item):
     if component in components:
         if language(text) == 'en':
             doc = tokenizer(text)
-            bow_or_none = dictionary.doc2bow([tok.lower_ for tok in doc if not tok.is_stop and tok.is_alpha])
+            tokens = [tok.lower_ for tok in doc if not tok.is_stop and tok.is_alpha]
+            bow_or_none = dictionary.doc2bow(tokens)
         else:
             bow_or_none = None
     else:
@@ -135,6 +136,7 @@ with Pool(TOK_PROCESSES) as p:
 
 for component in components:
     if component in models:
+        print(f'Training model for {component} component')
         models[component].update(docs[component])
     else:
         print(f'Initializing model for {component} component')
