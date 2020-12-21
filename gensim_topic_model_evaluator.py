@@ -2,30 +2,23 @@ import argparse
 import lm_dataformat as lmd
 import gensim
 import itertools
-import json
 import pandas as pd
 import seaborn as sns
 import numpy as np
+import json
+import networkx as nx
+import matplotlib.pyplot as plt
+import spacy
 import fasttext
 
 from math import pow
 from multiprocessing import Pool
 from collections import defaultdict
 from gensim.corpora.dictionary import Dictionary
-from gensim.utils import simple_preprocess
-from gensim.parsing.preprocessing import remove_stopwords
+from spacy.lang.en import English
 from gensim.models import LdaModel, LdaMulticore
+from sklearn.manifold import TSNE  
 from best_download import download_file
-
-download_file('https://dl.fbaipublicfiles.com/fasttext/supervised-models/lid.176.bin', 'lid.176.bin', '7e69ec5451bc261cc7844e49e4792a85d7f09c06789ec800fc4a44aec362764e')
-
-langdet = fasttext.load_model("lid.176.bin")
-
-def language(doc):
-    details = langdet.predict(doc.replace('\n', ' '), k=1)
-
-    return details[0][0].replace('__label__', '')
-
 
 component_list = {
     'StackExchange',
@@ -75,6 +68,16 @@ LDA_PROCESSES = args.lda_processes
 
 components = component_list
 
+download_file('https://dl.fbaipublicfiles.com/fasttext/supervised-models/lid.176.bin', 'lid.176.bin', '7e69ec5451bc261cc7844e49e4792a85d7f09c06789ec800fc4a44aec362764e')
+langdet = fasttext.load_model("lid.176.bin")
+nlp = English()
+tokenizer = nlp.Defaults.create_tokenizer(nlp)
+
+def language(doc):
+    details = langdet.predict(doc.replace('\n', ' '), k=1)
+
+    return details[0][0].replace('__label__', '')
+
 dictionary = Dictionary.load(dictionary_file)
 
 rdr = lmd.Reader(input_path)
@@ -85,12 +88,27 @@ def baggify(item):
     component = meta['pile_set_name']
     if component in components:
         if language(text) == 'en':
-            bow_or_none = dictionary.doc2bow(simple_preprocess(remove_stopwords(text), min_len=1, max_len=50))
+            doc = tokenizer(text)
+            tokens = [tok.lower_ for tok in doc if not tok.is_stop and tok.is_alpha]
+            bow_or_none = dictionary.doc2bow(tokens)
         else:
             bow_or_none = None
     else:
         bow_or_none = None
     return (bow_or_none, component)
+
+def raw_baggify(item):
+    text, meta = item
+    component = meta['pile_set_name']
+    if component in components:
+        if language(text) == 'en':
+            doc = tokenizer(text)
+            tokens_or_none = [tok.lower_ for tok in doc if not tok.is_stop and tok.is_alpha]
+        else:
+            tokens_or_none = None
+    else:
+        tokens_or_none = None
+    return (tokens_or_none, component)
 
 docs = defaultdict(list)
 models = defaultdict()
@@ -100,19 +118,27 @@ for component in components:
     models[component] = LdaMulticore.load(models_path + component + '.model.topic')
 
 # Compute cross-corpus topic similarities    
-    
 diffs = defaultdict(defaultdict)
 
 for (train, test) in itertools.product(*(components, components)):
     print(f'Computing topic diff for {train} on {test}...')
-    diffs[train][test] = models[train].diff(models[test])[0].tolist()
+    diff, annotation = models[train].diff(models[test])
+    diffs[train][test] = diff.tolist()
+
+    fig, ax = plt.subplots(1,1)
+
+    img = plt.imshow(diff, cmap='gray')
+
+    ax.set_title("Topic Model Difference Matrix")
+    ax.set_ylabel(train)
+    ax.set_xlabel(test)
+    
+    plt.savefig(f'topic_diffs_{train}_{test}.png')
     
 with open('topic_model_diffs.json', 'w') as fp:
     json.dump(diffs, fp)
     print("Saving topic modeling cross-corpus diffs...")
- 
 
-"""
 # Compute cross-corpus perplexities 
 perplexities = defaultdict(defaultdict)
 
@@ -130,9 +156,8 @@ for (train, test) in itertools.product(*(components, components)):
 with open('topic_model_perplexities.json', 'w') as fp:
     json.dump(perplexities, fp)
     print("Saving topic modeling cross-corpus perplexities...")
- 
-df = pd.DataFrame.from_dict(perplexities,
-                       orient='index')
+    
+df = pd.DataFrame.from_dict(perplexities, orient='index')
 df = df.sort_index(axis=0)
 df = df.sort_index(axis=1)
 log_perplexities = df.apply(np.log)
@@ -149,5 +174,4 @@ fig.savefig('topic_model_perplexities.png')
 
 # Show topics for each component
 for component in components:
-    print(component, models[component].show_topics(32, 10))
-"""
+    print(component, models[component].show_topics(16, 10))
